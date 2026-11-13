@@ -54,11 +54,15 @@ const HOL_KEY = 'cal-learn-holidays';
 let HOL = {};
 const easyName = n => (/^대체공휴일/.test(n) ? '대체 휴일' : ({ '1월 1일': '새해 첫날', '기독탄신일': '크리스마스', '전국동시지방선거': '선거일' })[n] || n.replace('ㆍ', '·'));
 const dkey = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-const holOf = (y, m, d) => HOL[dkey(y, m, d)];
+let HOL_MAX = 0; // API가 알려 주는 마지막 연도
+/* API에 아직 없는 미래 연도: 해마다 날짜가 같은 공휴일만 보여 준다(설날·추석 등은 API가 갱신되면 자동으로 나온다) */
+const FIXED_HOL = { '01-01': '새해 첫날', '03-01': '3·1절', '05-01': '노동절', '05-05': '어린이날', '06-06': '현충일', '07-17': '제헌절', '08-15': '광복절', '10-03': '개천절', '10-09': '한글날', '12-25': '크리스마스' };
+const holOf = (y, m, d) => (HOL_MAX && y > HOL_MAX ? FIXED_HOL[dkey(y, m, d).slice(5)] : HOL[dkey(y, m, d)]);
 function setHolidays(raw) {
   const out = {};
   Object.values(raw || {}).forEach(yr => Object.entries(yr || {}).forEach(([k, v]) => { out[k] = easyName(String([].concat(v)[0])); }));
   HOL = out;
+  HOL_MAX = Math.max(0, ...Object.keys(raw || {}).map(Number).filter(n => n > 2000));
 }
 let holCache = null;
 try { holCache = JSON.parse(localStorage.getItem(HOL_KEY) || 'null'); if (holCache) setHolidays(holCache.data); } catch (e) { /* 무시 */ }
@@ -111,6 +115,8 @@ function explorerHTML(y, m, bind = '') {
       <button type="button" class="rb" data-act="ex-next" aria-label="다음 달">›</button>
       <button type="button" class="ex-now" data-act="ex-now">이번 달</button>
     </div>
+    <div class="ex-years" role="group" aria-label="연도 고르기">${[Y - 1, Y, Y + 1, Y + 2].map(yy =>
+      `<button type="button" class="${yy === y ? 'on' : ''}" data-act="ex-y" data-y="${yy}" aria-pressed="${yy === y}">${yy}년${yy === Y ? '<small>올해</small>' : yy === Y + 1 ? '<small>내년</small>' : yy === Y - 1 ? '<small>작년</small>' : '<small>&nbsp;</small>'}</button>`).join('')}</div>
     <div class="ex-months" role="group" aria-label="달 고르기">${Array.from({ length: 12 }, (_, i) =>
       `<button type="button" class="${i + 1 === m ? 'on' : ''}${y === Y && i + 1 === M ? ' cur' : ''}" data-act="ex-m" data-m="${i + 1}" aria-pressed="${i + 1 === m}">${i + 1}월</button>`).join('')}</div>
     ${calHTML(y, m, { today: true, cls: 'nohead' })}
@@ -123,7 +129,21 @@ const trio = items => `<div class="trio">${items.map(([s, b, e], i) =>
 const eq = parts => `<div class="eq">${parts.map(p => `<span>${p}</span>`).join('<i>=</i>')}</div>`;
 const cap = t => `<p class="cap">${t}</p>`;
 const monthGrid = withDays => `<div class="mgrid">${Array.from({ length: 12 }, (_, i) =>
-  `<button type="button" class="mc${i + 1 === M ? ' now' : ''}" data-act="month" data-m="${i + 1}"><b>${i + 1}월</b>${withDays ? `<small>${lastDay(Y, i + 1)}일</small>` : ''}</button>`).join('')}</div>`;
+  `<button type="button" class="mc${i + 1 === M ? ' now' : ''}" data-act="month" data-y="${Y}" data-m="${i + 1}"><b>${i + 1}월</b>${withDays ? `<small>${lastDay(Y, i + 1)}일</small>` : ''}</button>`).join('')}</div>`;
+function miniMonth(y, m) {
+  const first = wdOf(y, m, 1), L = lastDay(y, m);
+  let h = `<button type="button" class="ymini${y === Y && m === M ? ' now' : ''}" data-act="month" data-y="${y}" data-m="${m}" aria-label="${y}년 ${m}월 달력 보기"><b>${m}월</b><span class="ymg">`;
+  for (let k = 0; k < first; k++) h += '<i></i>';
+  for (let d = 1; d <= L; d++) { const w = (first + d - 1) % 7; h += `<i class="${holOf(y, m, d) ? 'sun' : wcls(w)}${y === Y && m === M && d === D ? ' t' : ''}">${d}</i>`; }
+  return h + '</span></button>';
+}
+function yearViewHTML(y) {
+  return `<div class="yv" data-y="${y}">
+    <div class="ex-years" role="group" aria-label="연도 고르기">${[Y - 1, Y, Y + 1, Y + 2].map(yy =>
+      `<button type="button" class="${yy === y ? 'on' : ''}" data-act="yv-y" data-y="${yy}" aria-pressed="${yy === y}">${yy}년${yy === Y ? '<small>올해</small>' : yy === Y + 1 ? '<small>내년</small>' : yy === Y - 1 ? '<small>작년</small>' : '<small>&nbsp;</small>'}</button>`).join('')}</div>
+    <div class="yv-grid">${Array.from({ length: 12 }, (_, i) => miniMonth(y, i + 1)).join('')}</div>
+  </div>`;
+}
 const wchips = sub => `<div class="wchips">${WD.map((w, i) => `<div class="wc ${wcls(i)}"><b>${w}</b><small>${sub(i)}</small></div>`).join('')}</div>`;
 
 /* ───────── 단원 내용 ───────── */
@@ -232,6 +252,7 @@ const UNITS = [
     id: 'year', title: '1년', sub: '작년 · 올해 · 내년',
     learn: () => [
       { t: '1년이란?', b: '<b>열두 달</b>이 모이면 <b>1년</b>이에요.<br><b>1월 1일</b>에 시작하고 <b>12월 31일</b>에 끝나요.', note: '달을 누르면 그 달 달력을 볼 수 있어요.', v: monthGrid(false) },
+      { t: '1년 달력 한눈에 보기', b: '달력 <b>열두 장</b>이 모여 <b>1년</b>이에요.<br><b>연도</b>를 누르면 그 해 달력이 나와요. <b>내년</b>도 눌러 보세요.', note: '달을 누르면 크게 볼 수 있어요.', v: yearViewHTML(Y), screenOnly: true, wide: true },
       { t: '1년은 365일', b: '1년은 <b>365일</b>이에요.<br>달력 <b>12장</b>을 모두 넘기면 1년이 지나가요.', v: eq(['1년', '12달', '365일']) },
       { t: '작년 · 올해 · 내년', b: '올해의 <b>1년 전</b>은 <b>작년</b>이에요.<br>올해의 <b>1년 뒤</b>는 <b>내년</b>이에요.', v: trio([['작년', (Y - 1) + '년'], ['올해', Y + '년'], ['내년', (Y + 1) + '년']]) },
       { t: '1년에는 네 계절', b: '1년 동안 <b>봄, 여름, 가을, 겨울</b>이 차례로 와요.',
@@ -434,7 +455,7 @@ function renderLearn(u, i) {
   const c = cards[i];
   cur = { u, phase: 'learn', i, n: cards.length, say: `${c.t}. ${strip(c.b)}` };
   main.innerHTML = shell(u, 'learn', i, cards.length, `
-  <article class="card learn">
+  <article class="card learn${c.wide ? ' wide' : ''}">
     <div class="q-top"><span class="pill">배워요 ${i + 1} / ${cards.length}</span><button type="button" class="say" data-act="say">읽어 주기</button></div>
     <h2>${c.t}</h2>
     <p class="body">${c.b}</p>
@@ -544,11 +565,11 @@ function wrong(el) {
 }
 
 /* ───────── 학습지 (A4, 만들 때마다 문제가 바뀜) ───────── */
-const sheet = { units: QS.get('units') ? QS.get('units').split(',') : UNITS.map(u => u.id), learn: !QS.has('nolearn'), quiz: true, key: QS.has('key'), big: QS.has('big'), month: QS.get('month') || 'now', seed: +QS.get('seed') || newSeed() };
+const sheet = { units: QS.get('units') ? QS.get('units').split(',') : UNITS.map(u => u.id), learn: !QS.has('nolearn'), quiz: true, key: QS.has('key'), big: QS.has('big'), month: QS.get('month') || 'now', year: +QS.get('year') || Y, seed: +QS.get('seed') || newSeed() };
 function sheetYM() {
-  if (sheet.month === 'now') return [Y, M];
-  if (sheet.month === 'rand') return [Y, 1 + Math.floor(rng(sheet.seed * 7 + 3)() * 12)];
-  return [Y, +sheet.month];
+  if (sheet.month === 'now') return [sheet.year, M];
+  if (sheet.month === 'rand') return [sheet.year, 1 + Math.floor(rng(sheet.seed * 7 + 3)() * 12)];
+  return [sheet.year, +sheet.month];
 }
 const sheetQs = u => u.gen(rng(sheet.seed * 31 + u.no * 1013), { ym: sheetYM() });
 const chunk = (arr, n) => { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
@@ -620,8 +641,10 @@ function renderSheet() {
       <div class="sp-opts">
         <div class="sp-g"><span>단원</span>${UNITS.map(u => `<button type="button" class="chip${sheet.units.includes(u.id) ? ' on' : ''}" data-act="sh-unit" data-id="${u.id}" aria-pressed="${sheet.units.includes(u.id)}">${u.no}. ${u.title}</button>`).join('')}</div>
         <div class="sp-g"><span>내용</span>${tg('learn', '배워요')}${tg('quiz', '풀어요')}${tg('key', '정답지')}${tg('big', '큰 글씨')}</div>
-        <div class="sp-g"><span>달력 보기의 달</span><select id="shMonth" aria-label="달력 보기 단원에 쓸 달">
-          <option value="now"${sheet.month === 'now' ? ' selected' : ''}>이번 달 (${M}월)</option>
+        <div class="sp-g"><span>달력 보기의 달</span><select id="shYear" aria-label="달력 보기 단원에 쓸 연도">
+          ${[Y, Y + 1, Y + 2].map(yy => `<option value="${yy}"${sheet.year === yy ? ' selected' : ''}>${yy}년${yy === Y ? ' (올해)' : yy === Y + 1 ? ' (내년)' : ''}</option>`).join('')}
+        </select><select id="shMonth" aria-label="달력 보기 단원에 쓸 달">
+          <option value="now"${sheet.month === 'now' ? ' selected' : ''}>${M}월 (이번 달)</option>
           <option value="rand"${sheet.month === 'rand' ? ' selected' : ''}>아무 달이나</option>
           ${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}"${String(sheet.month) === String(i + 1) ? ' selected' : ''}>${i + 1}월</option>`).join('')}
         </select></div>
@@ -674,8 +697,8 @@ function exSet(el, y, m) {
   if (bind === 'cal') { calYM = [d.getFullYear(), d.getMonth() + 1]; delete session.cal; }
   tone(660, 0, 0.08, 'sine', 0.08);
 }
-function openMonth(m) {
-  $('#monthDlgBody').innerHTML = explorerHTML(Y, m);
+function openMonth(y, m) {
+  $('#monthDlgBody').innerHTML = explorerHTML(y, m);
   $('#monthDlg').showModal();
 }
 
@@ -702,7 +725,9 @@ document.addEventListener('click', e => {
     case 'ex-next': exSet(ex, +ex.dataset.y, +ex.dataset.m + 1); break;
     case 'ex-now': exSet(ex, Y, M); break;
     case 'ex-m': exSet(ex, +ex.dataset.y, +el.dataset.m); break;
-    case 'month': openMonth(+el.dataset.m); break;
+    case 'ex-y': exSet(ex, +el.dataset.y, +ex.dataset.m); break;
+    case 'yv-y': { const yv = el.closest('.yv'); const tmp = document.createElement('div'); tmp.innerHTML = yearViewHTML(+el.dataset.y); yv.replaceWith(tmp.firstElementChild); tone(660, 0, 0.08, 'sine', 0.08); break; }
+    case 'month': openMonth(+el.dataset.y || Y, +el.dataset.m); break;
     case 'to-learn': if (cur && cur.u) go(`${cur.u.id}/learn/0`); break;
     case 'to-quiz': if (cur && cur.u && cur.phase !== 'quiz') { startSession(cur.u); go(`${cur.u.id}/quiz/0`); } break;
     case 'prev':
@@ -748,7 +773,10 @@ document.addEventListener('click', e => {
     case 'sh-print': fitSheets(); window.print(); break;
   }
 });
-document.addEventListener('change', e => { if (e.target.id === 'shMonth') { sheet.month = e.target.value; drawPages(); } });
+document.addEventListener('change', e => {
+  if (e.target.id === 'shMonth') { sheet.month = e.target.value; drawPages(); }
+  if (e.target.id === 'shYear') { sheet.year = +e.target.value; drawPages(); }
+});
 window.addEventListener('hashchange', route);
 
 $('#logo').textContent = D;

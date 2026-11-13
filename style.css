@@ -221,6 +221,26 @@ button.cal-cell:hover:not(:disabled) > span { background: var(--accent-soft); }
 .ex .cal { max-width: none; }
 .card.learn .ex { font-size: 1.05em; }
 
+/* 연도 고르기 · 1년 달력 한눈에 보기 */
+.ex-years { display: grid; grid-template-columns: repeat(4, 1fr); gap: .25em; margin-top: .7em; }
+.ex-years button { display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid var(--line); background: #fff; border-radius: .7em; padding: .35em 0; font-size: .82em; font-weight: 800; color: var(--muted); line-height: 1.25; }
+.ex-years small { font-size: .7em; font-weight: 800; color: var(--accent-ink); }
+.ex-years button:hover { background: var(--accent-soft); }
+.ex-years .on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ex-years .on small { color: #D9D5FF; }
+.ex .ex-months { margin-top: .3em; }
+.yv { width: 100%; }
+.yv .ex-years { max-width: 26em; margin: 0 auto .8em; }
+.yv-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5em; }
+.ymini { display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; text-align: left; border: 1px solid var(--line); background: #fff; border-radius: .7em; padding: .45em .5em .5em; transition: transform .1s, border-color .15s; }
+.ymini:hover { border-color: var(--accent); transform: translateY(-2px); }
+.ymini.now { border-color: var(--accent); box-shadow: 0 0 0 .1em var(--accent); }
+.ymini > b { display: block; font-size: .85em; font-weight: 800; margin: 0 0 .2em .2em; }
+.ymg { display: grid; grid-template-columns: repeat(7, 1fr); font-size: .46em; font-weight: 700; text-align: center; line-height: 1.7; font-variant-numeric: tabular-nums; }
+.ymg i { font-style: normal; border-radius: 50%; }
+.ymg i.t { background: var(--accent); color: #fff; }
+body[data-view="unit"] main:has(.card.wide) { max-width: 72rem; }
+
 /* ── 문제 ── */
 .opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem; }
 .opts.n2 { grid-template-columns: repeat(2, 1fr); }
@@ -363,6 +383,8 @@ dialog::backdrop { background: rgba(15, 23, 42, .5); }
   .opts, .opts.n4 { grid-template-columns: 1fr; gap: .7rem; }
   .opt { flex-direction: row; justify-content: flex-start; min-height: 4.5rem; font-size: 1.6rem; text-align: left; }
   .slot b { font-size: 1.05rem; }
+  .yv-grid { grid-template-columns: repeat(2, 1fr); }
+  .ymg { font-size: .6em; }
   .btn { font-size: 1.25rem; padding: .7rem 1.2rem; min-height: 3.6rem; }
   .utitle h1 { font-size: 1.9rem; }
   .sp-g > span { min-width: 100%; }
