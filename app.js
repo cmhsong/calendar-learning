@@ -631,12 +631,11 @@ function renderSheet() {
   main.innerHTML = `
   <section class="sp">
     <div class="sp-bar">
-      <div class="sp-row">
-        <h1>학습지 만들기</h1>
-        <div class="sp-act">
-          <button type="button" class="btn ghost" data-act="sh-new">새 문제로 바꾸기</button>
-          <button type="button" class="btn primary" data-act="sh-print">A4로 인쇄하기</button>
-        </div>
+      <h1>학습지 만들기</h1>
+      <p class="sp-info" id="spInfo"></p>
+      <div class="sp-act">
+        <button type="button" class="btn primary" id="shPrint" data-act="sh-print">A4로 인쇄하기</button>
+        <button type="button" class="btn ghost" data-act="sh-new">새 문제로 바꾸기</button>
       </div>
       <div class="sp-opts">
         <div class="sp-g"><span>단원</span>${UNITS.map(u => `<button type="button" class="chip${sheet.units.includes(u.id) ? ' on' : ''}" data-act="sh-unit" data-id="${u.id}" aria-pressed="${sheet.units.includes(u.id)}">${u.no}. ${u.title}</button>`).join('')}</div>
@@ -649,7 +648,7 @@ function renderSheet() {
           ${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}"${String(sheet.month) === String(i + 1) ? ' selected' : ''}>${i + 1}월</option>`).join('')}
         </select></div>
       </div>
-      <p class="sp-info" id="spInfo"></p>
+      <p class="sp-tip">‘새 문제로 바꾸기’를 누를 때마다 문제가 바뀝니다. 인쇄 창에서 용지는 <b>A4</b>, 배율은 <b>100%</b>로 두세요.</p>
     </div>
     <div class="pages-wrap"><div class="pages" id="pages"></div></div>
   </section>`;
@@ -658,10 +657,16 @@ function renderSheet() {
 function drawPages() {
   const pages = $('#pages'); if (!pages) return;
   pages.className = 'pages' + (sheet.big ? ' big' : '');
-  pages.innerHTML = pagesHTML() || '<p class="sp-empty">단원과 내용을 골라 주세요.</p>';
+  let html = '';
+  try { html = pagesHTML(); } catch (err) {
+    pages.innerHTML = `<p class="sp-empty">학습지를 만들지 못했어요. ‘새 문제로 바꾸기’를 다시 눌러 주세요.<br><small>${String(err && err.message || err)}</small></p>`;
+    $('#spInfo').textContent = ''; return;
+  }
+  pages.innerHTML = html || '<p class="sp-empty">단원과 내용(배워요 · 풀어요)을 하나 이상 골라 주세요.</p>';
   const n = pages.querySelectorAll('.sheet').length;
-  $('#spInfo').innerHTML = `A4 <b>${n}장</b> · 학습지 번호 <b>${sheet.seed}</b> · ‘새 문제로 바꾸기’를 누를 때마다 문제가 바뀝니다. 아래는 인쇄될 모습 그대로입니다.`;
-  fitPages(); fitSheets();
+  $('#spInfo').innerHTML = n ? `<b>A4 ${n}장</b>이 만들어졌어요.<br>학습지 번호 <b>${sheet.seed}</b>` : '';
+  const pb = $('#shPrint'); if (pb) pb.disabled = !n;
+  try { fitPages(); fitSheets(); } catch (err) { /* 크기 맞춤 실패는 무시 */ }
 }
 /* 화면 폭에 맞춰 A4 미리보기를 줄여서 보여 준다 */
 function fitPages() {

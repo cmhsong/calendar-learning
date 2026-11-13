@@ -405,3 +405,30 @@ dialog::backdrop { background: rgba(15, 23, 42, .5); }
   .sheet:last-child { break-after: auto; page-break-after: auto; }
   body:not([data-view="sheet"]) main { padding: 10mm; }
 }
+
+/* ═════════ 학습지 만들기: 왼쪽 설정 + 오른쪽 A4 종이 ═════════ */
+.sp { display: grid; grid-template-columns: 19rem minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.sp-bar { position: sticky; top: 6rem; padding: 1.4rem; display: grid; gap: 1rem; max-height: calc(100vh - 7rem); overflow-y: auto; }
+.sp-bar h1 { font-size: 1.8rem; font-weight: 800; letter-spacing: -.03em; }
+.sp-info { margin: 0; font-size: 1.1rem; line-height: 1.5; color: var(--muted); }
+.sp-info b { color: var(--accent-ink); }
+.sp-act { display: grid; gap: .5rem; }
+.sp-act .btn { width: 100%; min-height: 3.4rem; font-size: 1.25rem; padding: .6rem 1rem; }
+.sp-opts { margin: 0; gap: .9rem; }
+.sp-g { gap: .35rem; }
+.sp-g > span { min-width: 100%; font-size: .95rem; }
+.chip { height: 2.6rem; padding: 0 .9rem; font-size: 1rem; }
+.sp-g select { height: 2.6rem; font-size: 1rem; max-width: 100%; }
+.sp-tip { font-size: .9rem; line-height: 1.5; color: var(--muted); }
+.sp-tip b { color: var(--ink); }
+.pages-wrap { margin-top: 0; min-width: 0; }
+.sp-empty { background: var(--paper); border-radius: var(--radius); font-size: 1.3rem; }
+.sp-empty small { font-size: .8rem; font-weight: 500; }
+@media (max-width: 62rem) {
+  .sp { grid-template-columns: 1fr; }
+  .sp-bar { position: static; max-height: none; }
+  .sp-act { grid-template-columns: 1fr 1fr; }
+}
+@media print {
+  .sp { display: block; }
+}
