@@ -91,7 +91,7 @@ const UNITS = [
   },
   /* 2. 월 */
   {
-    id: 'month', no: 2, icon: '🗓️', title: '한 달', tag: '월', sub: '지난달 · 이번 달 · 다음 달',
+    id: 'month', no: 2, icon: '🗓️', title: '한 달', tag: '월', sub: '지난달 · 이번 달 · 다음 달', sharedCal: true,
     learn: () => [
       { t: '한 달이란?', b: '달력 <b>한 장</b>이 <b>한 달</b>이에요. 한 달은 <b>1일</b>부터 시작해요.',
         v: calHTML(Y, M, { cls: 'sm' }) },
@@ -467,7 +467,7 @@ function sheetLearn(u) {
 }
 function sheetQuiz(u) {
   const qs = getQs(u);
-  const shared = u.sharedCal ? (() => { const [y, m] = u.ym(); return `<div class="p-shared"><p>아래 달력을 보고 문제를 풀어 보세요.</p>${calHTML(y, m, { cls: 'big' })}</div>`; })() : '';
+  const shared = u.sharedCal ? (() => { const [y, m] = u.ym ? u.ym() : [Y, M]; return `<div class="p-shared"><p>아래 달력을 보고 문제를 풀어 보세요.</p>${calHTML(y, m, { cls: 'big' })}</div>`; })() : '';
   const items = qs.map((q, i) => {
     let b = '';
     if (q.type === 'choice') {

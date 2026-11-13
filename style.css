@@ -353,3 +353,23 @@ html.preview .sheet { width: 210mm; min-height: 297mm; padding: 13mm 14mm; margi
   .kb { border: .35mm solid var(--line); border-radius: 4mm; padding: 3mm 4mm; margin-bottom: 3mm; break-inside: avoid; }
   .kb h3 { font-size: 1.1em; font-weight: 800; margin: 0 0 1mm; }
   .kb ol { margin: 0; padding-left: 6mm; display: grid; grid-template-columns: repeat(4, 1fr); gap: .5mm 8mm; font-size: 1em; }
+
+/* 학습지: 그림이 줄바꿈되지 않게 */
+.sheet .flow, .sheet .trio { flex-wrap: nowrap; }
+.sheet .fi { min-width: 13mm; white-space: nowrap; }
+.sheet .tb b, .sheet .tb small, .sheet .tb em { white-space: nowrap; }
+.sheet .tb b { font-size: .95em; }
+.sheet .ar { font-size: .9em; }
+
+/* 학습지: 한 장(A4)에 들어가도록 간격 조정 */
+.sheet .sh { margin-bottom: 4mm; }
+.sheet .pq-grid { gap: 3mm; }
+.sheet .pq { padding: 3mm 4mm; }
+.sheet .pq-q { line-height: 1.4; }
+.sheet .po { gap: .4mm; margin-top: 1.5mm; line-height: 1.4; }
+.sheet .pq .cal:not(.big) .cal-cell { min-height: 6.4mm; }
+.sheet .cal.big .cal-cell { min-height: 11.5mm; }
+.sheet .p-shared { margin-bottom: 4mm; }
+.sheet .cal.big .cal-cell { min-height: 9.5mm; font-size: 1.25em; }
+.sheet .cal.big .cal-wd { padding: .5mm 0; }
+.sheet .wr { margin-top: 2mm; }
