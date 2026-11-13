@@ -11,3 +11,6 @@
 ## 사용한 오픈 소스
 - [canvas-confetti](https://github.com/catdad/canvas-confetti) (ISC)
 - [Pretendard](https://github.com/orioncactus/pretendard) (SIL OFL)
+- [holidays-kr](https://github.com/hyunbinseo/holidays-kr) 공휴일 API (키 없이 무료, 달력의 빨간 날 표시)
+
+주소 뒤에 `?date=2026-10-05` 를 붙이면 그 날짜를 '오늘'로 삼아 학습지를 만듭니다.

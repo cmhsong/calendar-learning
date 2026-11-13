@@ -5,7 +5,9 @@
 
 /* ───────── 날짜 도구 ───────── */
 const WD = ['일', '월', '화', '수', '목', '금', '토'];
-const TODAY = new Date();
+const QS = new URLSearchParams(location.search);
+/* 주소 뒤에 ?date=2026-10-05 를 붙이면 그 날짜를 '오늘'로 삼습니다(미리 만들어 두는 학습지용). */
+const TODAY = (() => { const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(QS.get('date') || ''); return m ? new Date(+m[1], m[2] - 1, +m[3]) : new Date(); })();
 const Y = TODAY.getFullYear(), M = TODAY.getMonth() + 1, D = TODAY.getDate(), W = TODAY.getDay();
 const addDays = n => new Date(Y, M - 1, D + n);
 const md = d => `${d.getMonth() + 1}월 ${d.getDate()}일`;
@@ -23,10 +25,40 @@ const store = { fs: 1, zoom: 1, sound: true, stars: {} };
 try { Object.assign(store, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* 저장소 없음 */ }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) { /* 무시 */ } };
 
+/* ───────── 공휴일 (무료 공개 API) ─────────
+   holidays-kr (github.com/hyunbinseo/holidays-kr) — 우주항공청 월력요항 기반, 키 없이 사용.
+   인터넷이 안 되면 공휴일 표시 없이 그대로 동작합니다. */
+const HOL_URL = 'https://holidays.hyunbin.page/basic.json';
+const HOL_KEY = 'cal-learn-holidays';
+let HOL = {}; // { '2026-10-03': '개천절' }
+const easyName = n => (/^대체공휴일/.test(n) ? '대체 휴일' : ({ '1월 1일': '새해 첫날', '기독탄신일': '크리스마스', '전국동시지방선거': '선거일' })[n] || n.replace('ㆍ', '·'));
+const dkey = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+const holOf = (y, m, d) => HOL[dkey(y, m, d)];
+function setHolidays(raw) {
+  const out = {};
+  Object.values(raw || {}).forEach(yr => Object.entries(yr || {}).forEach(([k, v]) => { out[k] = easyName(String([].concat(v)[0])); }));
+  HOL = out;
+}
+let holCache = null;
+try { holCache = JSON.parse(localStorage.getItem(HOL_KEY) || 'null'); if (holCache) setHolidays(holCache.data); } catch (e) { /* 무시 */ }
+function loadHolidays() {
+  if (holCache && Date.now() - holCache.at < 864e5) return; // 하루에 한 번만 새로 받기
+  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 7000);
+  fetch(HOL_URL, { signal: ctl.signal }).then(r => (r.ok ? r.json() : Promise.reject())).then(data => {
+    const before = JSON.stringify(HOL);
+    setHolidays(data);
+    try { localStorage.setItem(HOL_KEY, JSON.stringify({ at: Date.now(), data })); } catch (e) { /* 무시 */ }
+    if (JSON.stringify(HOL) === before) return;
+    Object.keys(qCache).forEach(k => delete qCache[k]);
+    if (QS.has('sheet')) rebuildPreview();
+    else if (!cur || cur.phase === 'learn') route(); // 문제 푸는 중에는 화면을 바꾸지 않음
+  }).catch(() => { /* 인터넷 없음: 공휴일 없이 사용 */ }).finally(() => clearTimeout(timer));
+}
+
 /* ───────── 그림 도우미 ───────── */
 function calHTML(y, m, o = {}) {
   const first = wdOf(y, m, 1), L = lastDay(y, m);
-  const hi = o.hi || [];
+  const hi = o.hi || [], hols = [];
   const rowOf = d => Math.floor((first + d - 1) / 7);
   const hiRow = o.row ? rowOf(o.row) : -1;
   const isNow = y === Y && m === M;
@@ -36,6 +68,8 @@ function calHTML(y, m, o = {}) {
   for (let d = 1; d <= L; d++) {
     const w = (first + d - 1) % 7;
     const c = ['cal-cell', wcls(w)];
+    const hn = holOf(y, m, d);
+    if (hn) { c.push('hol'); hols.push(`<span><b>${d}일</b> ${hn}</span>`); }
     if (hi.includes(d)) c.push('hi');
     if (o.col === w) c.push('col');
     if (rowOf(d) === hiRow) c.push('row');
@@ -47,7 +81,7 @@ function calHTML(y, m, o = {}) {
   }
   const tail = (7 - ((first + L) % 7)) % 7;
   for (let k = 0; k < tail; k++) h += '<div class="cal-cell empty"></div>';
-  return h + '</div></div>';
+  return h + '</div>' + (hols.length ? `<div class="cal-hol"><i>쉬는 날</i>${hols.join('')}</div>` : '') + '</div>';
 }
 const flow = items => `<div class="flow">${items.map(([e, t, c]) =>
   `<div class="fi ${c || ''}">${e ? `<span class="fe">${e}</span>` : ''}<span>${t}</span></div>`).join('<span class="ar">→</span>')}</div>`;
@@ -180,7 +214,7 @@ const UNITS = [
           v: calHTML(y, m, { cls: 'sm anno' }) },
         { t: '무슨 요일인지 찾기', b: '① 날짜 숫자를 찾아요.<br>② 그 칸에서 <b>위로 쭉</b> 올라가요.<br>③ 맨 위의 <b>요일</b>을 읽어요.',
           v: calHTML(y, m, { cls: 'sm', hi: [D], col: W }) + cap(`${D}일은 <b>${WD[W]}요일</b>이에요.`) },
-        { t: '빨간 날, 파란 날', b: '<b class="sun">일요일</b>은 빨간색이에요. 쉬는 날이에요.<br><b class="sat">토요일</b>은 파란색이에요.',
+        { t: '빨간 날, 파란 날', b: '<b class="sun">일요일</b>과 <b class="sun">공휴일</b>은 빨간색이에요. 쉬는 날이에요.<br><b class="sat">토요일</b>은 파란색이에요.',
           v: calHTML(y, m, { cls: 'sm' }) },
         { t: '일주일 뒤는 바로 아래 칸', b: '달력에서 <b>바로 아래 칸</b>은 <b>7일 뒤</b>, 일주일 뒤예요.',
           v: calHTML(y, m, { cls: 'sm', hi: [10, 17] }) + cap('10일의 일주일 뒤는 <b>17일</b>이에요.') },
@@ -309,7 +343,8 @@ function renderHome() {
     <div class="todaycard" aria-label="오늘 날짜">
       <div class="tc-top">${Y}년 ${M}월</div>
       <div class="tc-day">${D}</div>
-      <div class="tc-wd ${wcls(W)}">${WD[W]}요일</div>
+      <div class="tc-wd ${holOf(Y, M, D) ? 'sun' : wcls(W)}">${WD[W]}요일</div>
+      ${holOf(Y, M, D) ? `<div class="tc-hol">${holOf(Y, M, D)}</div>` : ''}
       <div class="tc-cap">오늘</div>
     </div>
   </section>
@@ -500,6 +535,32 @@ function buildPrint(o) {
   const root = $('#print-root');
   root.className = o.big ? 'big' : '';
   root.innerHTML = o.units.map(u => (o.learn ? sheetLearn(u) : '') + (o.quiz ? sheetQuiz(u) : '')).join('') + (o.key ? sheetKey(o.units) : '');
+  if (!o.big) fitSheets();
+}
+/* 달(6주짜리 달, 공휴일 많은 달)에 따라 내용이 길어져도 A4 한 장에 들어가도록 조금 줄입니다. */
+function fitSheets() {
+  const root = $('#print-root'), html = document.documentElement;
+  const pv = html.classList.contains('preview');
+  const keepRoot = root.style.cssText, keepFs = html.style.getPropertyValue('font-size');
+  if (!pv) { // 화면에서는 숨겨져 있으므로, 인쇄와 같은 조건(글자 11pt, 폭 182mm)으로 잠깐 펼쳐서 잰다
+    html.style.setProperty('font-size', '11pt', 'important');
+    root.style.cssText = 'display:block;position:absolute;left:-99999px;top:0;width:182mm';
+  }
+  const probe = document.createElement('div');
+  probe.style.cssText = 'height:266mm;width:1mm;position:absolute;visibility:hidden';
+  root.appendChild(probe); const avail = probe.getBoundingClientRect().height; probe.remove();
+  root.querySelectorAll('.sheet').forEach(sh => {
+    const inner = document.createElement('div'); inner.className = 'sheet-in';
+    while (sh.firstChild) inner.appendChild(sh.firstChild);
+    sh.appendChild(inner);
+    let z = 1;
+    for (let k = 0; k < 8; k++) {
+      const h = inner.getBoundingClientRect().height;
+      if (h <= avail) break;
+      z = Math.max(0.6, z * Math.min(0.98, avail / h)); inner.style.zoom = z;
+    }
+  });
+  if (!pv) { root.style.cssText = keepRoot; keepFs ? html.style.setProperty('font-size', keepFs) : html.style.removeProperty('font-size'); }
 }
 function openPrint() {
   const here = cur && cur.u ? cur.u.id : null;
@@ -575,11 +636,14 @@ window.addEventListener('afterprint', clearPrint);
 
 applySettings();
 route();
-/* 주소 뒤에 ?sheet=all 을 붙이면 전체 학습지를 바로 준비합니다(인쇄 미리보기 · PDF 저장용). */
-const sp = new URLSearchParams(location.search);
-if (sp.has('sheet')) {
-  const ids = sp.get('sheet') === 'all' ? UNITS : sp.get('sheet').split(',').map(unitById).filter(Boolean);
-  buildPrint({ units: ids, learn: true, quiz: true, key: sp.has('key'), big: sp.has('big') });
-  if (sp.has('preview')) { document.documentElement.classList.add('preview'); window.removeEventListener('afterprint', clearPrint); }
+/* 주소 뒤에 ?sheet=all 을 붙이면 전체 학습지를 바로 준비합니다(&preview 화면 미리보기, &key 정답지, &big 큰 글씨). */
+function rebuildPreview() {
+  const ids = QS.get('sheet') === 'all' ? UNITS : (QS.get('sheet') || '').split(',').map(unitById).filter(Boolean);
+  buildPrint({ units: ids, learn: true, quiz: true, key: QS.has('key'), big: QS.has('big') });
 }
+if (QS.has('sheet')) {
+  rebuildPreview();
+  if (QS.has('preview')) { document.documentElement.classList.add('preview'); window.removeEventListener('afterprint', clearPrint); }
+}
+loadHolidays();
 })();

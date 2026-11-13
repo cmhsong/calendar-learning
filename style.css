@@ -373,3 +373,14 @@ html.preview .sheet { width: 210mm; min-height: 297mm; padding: 13mm 14mm; margi
 .sheet .cal.big .cal-cell { min-height: 9.5mm; font-size: 1.25em; }
 .sheet .cal.big .cal-wd { padding: .5mm 0; }
 .sheet .wr { margin-top: 2mm; }
+
+/* 공휴일 (무료 공개 API로 받아 표시) */
+.cal-cell.hol { color: var(--sun) !important; }
+.cal-cell.hol.today, .cal-cell.hol.yes { color: #fff !important; }
+.cal-hol { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .9rem; padding: .45rem .8rem; border-top: 1px solid var(--line); background: #FFF6F4; font-size: .95rem; font-weight: 600; }
+.cal-hol i { font-style: normal; font-weight: 800; color: #fff; background: var(--sun); border-radius: 999px; padding: 0 .6rem; font-size: .85em; }
+.cal-hol b { color: var(--sun); font-weight: 800; }
+.tc-hol { color: var(--sun); font-weight: 800; font-size: .95rem; }
+.sheet .cal-hol { font-size: .72em; padding: .8mm 2mm; gap: .3mm 2.5mm; }
+.sheet .cal.big .cal-hol { font-size: .9em; }
+.sheet .pq .cal .cal-hol { display: none; }
